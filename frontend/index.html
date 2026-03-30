@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LeadIQ — Real Estate Intelligence Dashboard</title>
+  <meta name="description" content="AI-powered lead scoring and qualification dashboard for real estate boutiques. Identify high-priority buyers instantly." />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            amber: {
+              400: '#FBBF24',
+              500: '#F59E0B',
+              600: '#D97706',
+            },
+            surface: {
+              900: '#0a0a0f',
+              800: '#111118',
+              700: '#1a1a25',
+              600: '#22222f',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          animation: {
+            'fade-in': 'fadeIn 0.4s ease-out',
+            'slide-up': 'slideUp 0.4s ease-out',
+            'slide-right': 'slideRight 0.35s ease-out',
+            'pulse-amber': 'pulseAmber 2s ease-in-out infinite',
+            'shimmer': 'shimmer 1.5s infinite',
+          },
+          keyframes: {
+            fadeIn: { from: { opacity: '0' }, to: { opacity: '1' } },
+            slideUp: { from: { opacity: '0', transform: 'translateY(16px)' }, to: { opacity: '1', transform: 'translateY(0)' } },
+            slideRight: { from: { opacity: '0', transform: 'translateX(24px)' }, to: { opacity: '1', transform: 'translateX(0)' } },
+            pulseAmber: { '0%,100%': { boxShadow: '0 0 0 0 rgba(245,158,11,0.4)' }, '50%': { boxShadow: '0 0 0 8px rgba(245,158,11,0)' } },
+            shimmer: { '0%': { backgroundPosition: '-400px 0' }, '100%': { backgroundPosition: '400px 0' } },
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    * { box-sizing: border-box; }
+    body { background: #0a0a0f; color: #e2e2ef; font-family: 'Inter', sans-serif; }
+
+    /* Glass card */
+    .glass {
+      background: rgba(26, 26, 37, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+
+    /* Gradient text */
+    .gradient-text {
+      background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 50%, #FDE68A 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Header gradient bar */
+    .header-glow {
+      background: linear-gradient(90deg, rgba(245,158,11,0.15) 0%, rgba(245,158,11,0.05) 50%, transparent 100%);
+      border-bottom: 1px solid rgba(245,158,11,0.2);
+    }
+
+    /* Urgency badges */
+    .badge-high   { background: rgba(239,68,68,0.15);  color:#F87171; border:1px solid rgba(239,68,68,0.3); }
+    .badge-medium { background: rgba(245,158,11,0.15); color:#FBBF24; border:1px solid rgba(245,158,11,0.3); }
+    .badge-low    { background: rgba(100,116,139,0.15);color:#94A3B8; border:1px solid rgba(100,116,139,0.3); }
+
+    /* Sentiment badges */
+    .badge-excited      { background:rgba(52,211,153,0.12); color:#6EE7B7; border:1px solid rgba(52,211,153,0.25); }
+    .badge-professional { background:rgba(99,102,241,0.12); color:#A5B4FC; border:1px solid rgba(99,102,241,0.25); }
+    .badge-frustrated   { background:rgba(239,68,68,0.12);  color:#FCA5A5; border:1px solid rgba(239,68,68,0.25); }
+    .badge-neutral      { background:rgba(148,163,184,0.12);color:#CBD5E1; border:1px solid rgba(148,163,184,0.25); }
+
+    /* CTA button glow */
+    .btn-glow {
+      background: linear-gradient(135deg, #F59E0B, #D97706);
+      box-shadow: 0 0 20px rgba(245,158,11,0.3), 0 4px 15px rgba(0,0,0,0.3);
+      transition: all 0.2s ease;
+    }
+    .btn-glow:hover {
+      box-shadow: 0 0 30px rgba(245,158,11,0.5), 0 4px 20px rgba(0,0,0,0.4);
+      transform: translateY(-1px);
+    }
+    .btn-glow:active { transform: translateY(0); }
+
+    /* Priority bar */
+    .priority-bar-inner {
+      height: 6px;
+      border-radius: 99px;
+      transition: width 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    /* Table hover */
+    .lead-row { transition: background 0.15s ease; }
+    .lead-row:hover { background: rgba(245,158,11,0.04) !important; }
+
+    /* Sortable th */
+    th.sortable { cursor: pointer; user-select: none; }
+    th.sortable:hover { color: #FBBF24; }
+    th .sort-icon { opacity: 0.4; font-size: 10px; margin-left: 4px; }
+    th.active .sort-icon { opacity: 1; color: #F59E0B; }
+
+    /* Skeleton shimmer */
+    .skeleton {
+      background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);
+      background-size: 400px 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 6px;
+    }
+
+    /* Modal overlay */
+    .modal-overlay {
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(245,158,11,0.3); border-radius: 99px; }
+
+    /* Chatbot panel */
+    #chatbot-panel {
+      transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease;
+    }
+    #chatbot-panel.hidden-panel {
+      transform: translateX(100%);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Toast */
+    .toast {
+      animation: slideUp 0.3s ease-out;
+    }
+
+    /* Input focus */
+    .input-styled {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #e2e2ef;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .input-styled:focus {
+      outline: none;
+      border-color: rgba(245,158,11,0.5);
+      box-shadow: 0 0 0 3px rgba(245,158,11,0.1);
+    }
+
+    /* Animated dots */
+    .typing-dot { animation: bounce 1.2s infinite; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-5px)} }
+
+    /* Stats bar */
+    .stat-card {
+      background: rgba(26,26,37,0.8);
+      border: 1px solid rgba(255,255,255,0.06);
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .stat-card:hover { border-color: rgba(245,158,11,0.3); transform: translateY(-2px); }
+  </style>
+</head>
+<body class="min-h-screen">
+
+<!-- ═══════════════════════════════════════════════ HEADER ══ -->
+<header class="header-glow sticky top-0 z-40">
+  <div class="max-w-screen-2xl mx-auto px-6 py-3 flex items-center justify-between">
+    <!-- Logo -->
+    <div class="flex items-center gap-3">
+      <img src="assets/logo.png" alt="LeadIQ Logo" class="h-10 w-auto" onerror="this.style.display='none'" />
+      <div>
+        <h1 class="text-lg font-bold tracking-tight leading-none gradient-text">LeadIQ</h1>
+        <p class="text-xs text-slate-500 font-medium tracking-wider uppercase">Real Estate Intelligence</p>
+      </div>
+    </div>
+
+    <!-- Stats pills -->
+    <div id="stats-bar" class="hidden md:flex items-center gap-3 text-xs">
+      <span id="stat-total" class="glass px-3 py-1.5 rounded-full text-slate-400">0 Leads</span>
+      <span id="stat-high" class="glass px-3 py-1.5 rounded-full text-red-400">0 High</span>
+      <span id="stat-medium" class="glass px-3 py-1.5 rounded-full text-amber-400">0 Medium</span>
+      <span id="stat-low" class="glass px-3 py-1.5 rounded-full text-slate-500">0 Low</span>
+    </div>
+
+    <!-- Settings -->
+    <button onclick="toggleSettings()" class="flex items-center gap-2 text-slate-400 hover:text-amber-400 transition text-sm font-medium">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+      Settings
+    </button>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════ SETTINGS PANEL ══ -->
+<div id="settings-panel" class="hidden border-b border-amber-500/10 bg-surface-800">
+  <div class="max-w-screen-2xl mx-auto px-6 py-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
+    <div>
+      <label class="block text-xs text-slate-500 font-medium mb-1.5 uppercase tracking-wider">AI Provider</label>
+      <select id="ai-provider-select" class="input-styled w-full rounded-lg px-3 py-2 text-sm" onchange="updateApiKeyVisibility()">
+        <option value="openai">OpenAI (GPT-4o)</option>
+        <option value="anthropic">Anthropic (Claude)</option>
+        <option value="google">Google (Gemini)</option>
+      </select>
+    </div>
+    <div id="openai-key-group">
+      <label class="block text-xs text-slate-500 font-medium mb-1.5 uppercase tracking-wider">OpenAI API Key</label>
+      <input id="api-key-openai" type="password" placeholder="sk-..." class="input-styled w-full rounded-lg px-3 py-2 text-sm font-mono" />
+    </div>
+    <div id="anthropic-key-group">
+      <label class="block text-xs text-slate-500 font-medium mb-1.5 uppercase tracking-wider">Claude API Key</label>
+      <input id="api-key-anthropic" type="password" placeholder="sk-ant-..." class="input-styled w-full rounded-lg px-3 py-2 text-sm font-mono" />
+    </div>
+    <div id="google-key-group">
+      <label class="block text-xs text-slate-500 font-medium mb-1.5 uppercase tracking-wider">Gemini API Key</label>
+      <input id="api-key-google" type="password" placeholder="AIza..." class="input-styled w-full rounded-lg px-3 py-2 text-sm font-mono" />
+    </div>
+    <div class="md:col-span-2 lg:col-span-4">
+      <label class="block text-xs text-slate-500 font-medium mb-1.5 uppercase tracking-wider">Backend URL</label>
+      <input id="backend-url-input" type="text" placeholder="http://localhost:8000" class="input-styled w-full rounded-lg px-3 py-2 text-sm font-mono" />
+    </div>
+    <div class="md:col-span-2 lg:col-span-4 flex gap-3">
+      <button onclick="saveSettings()" class="btn-glow text-white text-sm font-semibold px-5 py-2 rounded-lg">Save Settings</button>
+      <button onclick="toggleSettings()" class="text-slate-500 hover:text-slate-300 text-sm px-4 py-2 rounded-lg border border-white/5 hover:border-white/10 transition">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ MAIN CONTENT ══ -->
+<main class="max-w-screen-2xl mx-auto px-6 py-8 space-y-8">
+
+  <!-- INTAKE PANEL -->
+  <section class="glass rounded-2xl p-6 animate-fade-in">
+    <div class="flex items-start justify-between mb-4">
+      <div>
+        <h2 class="text-lg font-bold text-white mb-0.5">Lead Intake</h2>
+        <p class="text-sm text-slate-500">Paste one or more inquiries below. Separate multiple leads with <code class="bg-white/5 px-1 rounded text-amber-400 text-xs">---</code></p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="loadDemo()" class="text-xs text-slate-500 hover:text-amber-400 transition border border-white/5 hover:border-amber-500/30 px-3 py-1.5 rounded-lg">
+          Load Demo
+        </button>
+        <button onclick="clearInput()" class="text-xs text-slate-500 hover:text-red-400 transition border border-white/5 hover:border-red-500/20 px-3 py-1.5 rounded-lg">
+          Clear
+        </button>
+      </div>
+    </div>
+
+    <textarea
+      id="leads-input"
+      rows="7"
+      placeholder="Paste buyer emails or inquiry messages here...
+
+Example:
+Hi, I'm urgently looking to buy a 3-bedroom home for my family. We need to move in within 3 weeks. Budget around $700K. Please call me ASAP!
+
+---
+
+Hi there, just browsing the listings. Not sure yet what we want but thinking maybe a condo sometime next year."
+      class="input-styled w-full rounded-xl px-4 py-3 text-sm leading-relaxed resize-none"
+    ></textarea>
+
+    <div class="mt-4 flex items-center justify-between">
+      <p id="input-error" class="text-red-400 text-sm hidden">⚠️ Please paste at least one inquiry before analyzing.</p>
+      <div class="flex-1"></div>
+      <button id="analyze-btn" onclick="analyzeLeads()" class="btn-glow text-white font-bold px-8 py-3 rounded-xl flex items-center gap-2 text-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        Analyze Leads
+      </button>
+    </div>
+  </section>
+
+  <!-- STATS CARDS -->
+  <div id="stats-cards" class="hidden grid grid-cols-2 md:grid-cols-4 gap-4 animate-slide-up">
+    <div class="stat-card rounded-xl p-4">
+      <p class="text-xs text-slate-500 uppercase tracking-wider mb-1">Total Leads</p>
+      <p id="card-total" class="text-3xl font-bold text-white">0</p>
+    </div>
+    <div class="stat-card rounded-xl p-4">
+      <p class="text-xs text-slate-500 uppercase tracking-wider mb-1">High Priority</p>
+      <p id="card-high" class="text-3xl font-bold text-red-400">0</p>
+    </div>
+    <div class="stat-card rounded-xl p-4">
+      <p class="text-xs text-slate-500 uppercase tracking-wider mb-1">Medium Priority</p>
+      <p id="card-medium" class="text-3xl font-bold text-amber-400">0</p>
+    </div>
+    <div class="stat-card rounded-xl p-4">
+      <p class="text-xs text-slate-500 uppercase tracking-wider mb-1">Avg. Score</p>
+      <p id="card-avg" class="text-3xl font-bold text-indigo-400">—</p>
+    </div>
+  </div>
+
+  <!-- DASHBOARD TABLE -->
+  <section id="dashboard-section" class="hidden animate-slide-up">
+    <div class="glass rounded-2xl overflow-hidden">
+      <!-- Table header bar -->
+      <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+        <h2 class="text-base font-bold text-white">Lead Intelligence Dashboard</h2>
+        <div class="flex items-center gap-3">
+          <button onclick="exportToCSV()" class="btn-glow text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 mr-2">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Export CSV
+          </button>
+          <input id="filter-input" type="text" placeholder="Filter leads..." oninput="filterLeads()" class="input-styled text-xs rounded-lg px-3 py-1.5 w-36" />
+          <select id="urgency-filter" onchange="filterLeads()" class="input-styled text-xs rounded-lg px-3 py-1.5">
+            <option value="">All Urgency</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Skeleton -->
+      <div id="skeleton-rows" class="hidden p-6 space-y-3">
+        <div class="skeleton h-10 w-full"></div>
+        <div class="skeleton h-10 w-full"></div>
+        <div class="skeleton h-10 w-5/6"></div>
+        <div class="skeleton h-10 w-4/6"></div>
+      </div>
+
+      <!-- Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm" id="leads-table">
+          <thead>
+            <tr class="text-xs text-slate-500 uppercase tracking-wider border-b border-white/5">
+              <th class="px-6 py-3 text-left sortable active" data-col="priority_score" onclick="sortTable('priority_score')">
+                Rank <span class="sort-icon">▼</span>
+              </th>
+              <th class="px-6 py-3 text-left">Name / Snippet</th>
+              <th class="px-6 py-3 text-left sortable" data-col="budget" onclick="sortTable('budget')">
+                Budget <span class="sort-icon">↕</span>
+              </th>
+              <th class="px-6 py-3 text-left sortable" data-col="urgency" onclick="sortTable('urgency')">
+                Urgency <span class="sort-icon">↕</span>
+              </th>
+              <th class="px-6 py-3 text-left">Sentiment</th>
+              <th class="px-6 py-3 text-left sortable" data-col="priority_score" onclick="sortTable('priority_score')">
+                Priority Score <span class="sort-icon">↕</span>
+              </th>
+              <th class="px-6 py-3 text-left">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="leads-tbody">
+            <!-- Rows injected by JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <div id="no-results" class="hidden text-center py-12 text-slate-600 text-sm">No leads match your filter.</div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ═══════════════════════════════════════ REPLY MODAL ══ -->
+<div id="reply-modal" class="fixed inset-0 z-50 hidden items-center justify-center modal-overlay" onclick="closeReplyModal(event)">
+  <div class="glass rounded-2xl w-full max-w-2xl mx-4 max-h-[85vh] flex flex-col animate-slide-up">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-white/5">
+      <div>
+        <h3 class="font-bold text-white">Personalized Reply</h3>
+        <p id="reply-lead-name" class="text-xs text-slate-500 mt-0.5"></p>
+      </div>
+      <button onclick="closeReplyModal()" class="text-slate-500 hover:text-white transition text-xl leading-none">✕</button>
+    </div>
+    <div class="flex-1 overflow-y-auto p-6">
+      <!-- Loading -->
+      <div id="reply-loading" class="hidden text-center py-10">
+        <div class="flex justify-center gap-2 mb-3">
+          <div class="typing-dot w-2 h-2 bg-amber-400 rounded-full"></div>
+          <div class="typing-dot w-2 h-2 bg-amber-400 rounded-full"></div>
+          <div class="typing-dot w-2 h-2 bg-amber-400 rounded-full"></div>
+        </div>
+        <p class="text-slate-500 text-sm">Crafting your personalized reply…</p>
+      </div>
+      <!-- Content -->
+      <pre id="reply-content" class="hidden whitespace-pre-wrap text-sm text-slate-200 leading-relaxed font-sans"></pre>
+    </div>
+    <div class="px-6 py-4 border-t border-white/5 flex gap-3">
+      <button onclick="copyReply()" class="btn-glow text-white text-sm font-semibold px-5 py-2 rounded-lg flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        Copy to Clipboard
+      </button>
+      <button onclick="closeReplyModal()" class="text-slate-500 hover:text-slate-300 text-sm px-4 py-2 rounded-lg border border-white/5 transition">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ CHATBOT PANEL ══ -->
+<div id="chatbot-panel" class="fixed top-0 right-0 h-full w-full max-w-sm z-40 flex flex-col shadow-2xl hidden-panel">
+  <div class="flex flex-col h-full glass border-l border-white/5">
+    <!-- Chat Header -->
+    <div class="flex items-center gap-3 px-4 py-4 border-b border-white/5">
+      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">A</div>
+      <div class="flex-1 min-w-0">
+        <h4 class="font-bold text-white text-sm">Alex — AI Assistant</h4>
+        <p id="chat-lead-name" class="text-xs text-slate-500 truncate">Real Estate Intelligence</p>
+      </div>
+      <button onclick="closeChatbot()" class="text-slate-500 hover:text-white transition text-xl flex-shrink-0">✕</button>
+    </div>
+
+    <!-- Messages -->
+    <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-3">
+      <!-- Messages go here -->
+    </div>
+
+    <!-- Typing indicator -->
+    <div id="typing-indicator" class="hidden px-4 py-2">
+      <div class="flex gap-1.5 items-center text-slate-500 text-xs">
+        <div class="flex gap-1">
+          <div class="typing-dot w-1.5 h-1.5 bg-amber-400 rounded-full"></div>
+          <div class="typing-dot w-1.5 h-1.5 bg-amber-400 rounded-full"></div>
+          <div class="typing-dot w-1.5 h-1.5 bg-amber-400 rounded-full"></div>
+        </div>
+        Alex is typing…
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="px-4 py-3 border-t border-white/5">
+      <!-- Lead urgency warning for high -->
+      <div id="chat-warning" class="hidden mb-2 text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+        ⚡ High-priority lead — Consider a direct call instead.
+      </div>
+      <div class="flex gap-2">
+        <input
+          id="chat-input"
+          type="text"
+          placeholder="Type a message…"
+          class="input-styled flex-1 rounded-xl px-3 py-2.5 text-sm"
+          onkeydown="if(event.key==='Enter') sendChat()"
+        />
+        <button onclick="sendChat()" class="btn-glow text-white p-2.5 rounded-xl flex-shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ TOAST ══ -->
+<div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 space-y-2 pointer-events-none"></div>
+
+<!-- ═══════════════════════════════════════ JAVASCRIPT ══ -->
+<script>
+// ─── STATE ────────────────────────────────────────────────
+let allLeads = [];
+let filteredLeads = [];
+let sortCol = 'priority_score';
+let sortDir = 'desc';
+let currentChatLead = null;
+let chatHistory = {};   // { leadId: [{role, content}] }
+
+// ─── SETTINGS ─────────────────────────────────────────────
+function getAiProvider() { return localStorage.getItem('liq_ai_provider') || 'openai'; }
+
+function getApiKey() {
+  const provider = getAiProvider();
+  if (provider === 'openai') return localStorage.getItem('liq_api_key_openai') || '';
+  if (provider === 'anthropic') return localStorage.getItem('liq_api_key_anthropic') || '';
+  if (provider === 'google') return localStorage.getItem('liq_api_key_google') || '';
+  return '';
+}
+
+function getBackendUrl() { return (localStorage.getItem('liq_backend_url') || 'http://localhost:8000').replace(/\/$/, ''); }
+
+function updateApiKeyVisibility() {
+  const provider = document.getElementById('ai-provider-select').value;
+  document.getElementById('openai-key-group').classList.toggle('hidden', provider !== 'openai');
+  document.getElementById('anthropic-key-group').classList.toggle('hidden', provider !== 'anthropic');
+  document.getElementById('google-key-group').classList.toggle('hidden', provider !== 'google');
+}
+
+function toggleSettings() {
+  const panel = document.getElementById('settings-panel');
+  panel.classList.toggle('hidden');
+  if (!panel.classList.contains('hidden')) {
+    document.getElementById('ai-provider-select').value = getAiProvider();
+    document.getElementById('api-key-openai').value = localStorage.getItem('liq_api_key_openai') || '';
+    document.getElementById('api-key-anthropic').value = localStorage.getItem('liq_api_key_anthropic') || '';
+    document.getElementById('api-key-google').value = localStorage.getItem('liq_api_key_google') || '';
+    document.getElementById('backend-url-input').value = getBackendUrl();
+    updateApiKeyVisibility();
+  }
+}
+
+function saveSettings() {
+  const provider = document.getElementById('ai-provider-select').value;
+  const keyOpenAI = document.getElementById('api-key-openai').value.trim();
+  const keyAnthropic = document.getElementById('api-key-anthropic').value.trim();
+  const keyGoogle = document.getElementById('api-key-google').value.trim();
+  const url = document.getElementById('backend-url-input').value.trim();
+
+  localStorage.setItem('liq_ai_provider', provider);
+  localStorage.setItem('liq_api_key_openai', keyOpenAI);
+  localStorage.setItem('liq_api_key_anthropic', keyAnthropic);
+  localStorage.setItem('liq_api_key_google', keyGoogle);
+
+  if (url) localStorage.setItem('liq_backend_url', url);
+
+  const currentKey = getApiKey();
+  if (!currentKey) {
+    showToast(`Note: No API key set for ${provider}.`, 'info');
+  }
+
+  toggleSettings();
+  showToast('Settings saved!', 'success');
+}
+
+// ─── DEMO DATA ────────────────────────────────────────────
+function loadDemo() {
+  document.getElementById('leads-input').value = `Hi, I am urgently looking to buy a 4-bedroom house for my growing family. We have been pre-approved for up to $850,000 and need to close within the next 3 weeks max — my lease ends on April 5th and I cannot renew. Please call me ASAP. I've already toured 6 homes with another agent but wasn't happy. I want to work with someone who's serious.
+
+---
+
+Hello, my husband and I are thinking about downsizing once our youngest leaves for college in the fall. We don't have a firm budget yet — probably somewhere in the $400K to $600K range for a nice condo or townhouse. We're not in a rush, just exploring what's out there. Would love to see some listings when you have time.
+
+---
+
+Hi there! We are SO excited — we just got married and want to buy our first home together!! 💕 Our budget is around $550K. We've been saving for 3 years. We'd like to move in by summer (around June or July). We're flexible on location but would love a nice neighborhood with good schools for when we start a family. Can't wait to get started!
+
+---
+
+To Whom It May Concern, I represent a high-net-worth client who is relocating to your area for a C-suite position effective June 1st. They require a luxury property in the $2M–$3.5M range, preferably with at least 5 bedrooms, a home office, and proximity to the financial district. Please forward your premium listings at your earliest convenience. Discretion is appreciated.
+
+---
+
+Hey just browsing around, saw your listing on Zillow. Not really sure what I want yet lol. Maybe a condo? I don't know my budget honestly, still saving up. Probably a year or two away from actually buying anything. Just curious what's out there.`;
+  showToast('Demo leads loaded! Click Analyze Leads.', 'info');
+}
+
+function clearInput() {
+  document.getElementById('leads-input').value = '';
+  document.getElementById('input-error').classList.add('hidden');
+}
+
+// ─── ANALYZE ──────────────────────────────────────────────
+async function analyzeLeads() {
+  const raw = document.getElementById('leads-input').value.trim();
+  const errEl = document.getElementById('input-error');
+
+  if (!raw) { errEl.classList.remove('hidden'); return; }
+  errEl.classList.add('hidden');
+
+  if (!getApiKey()) {
+    showToast(`⚙️ Please add your ${getAiProvider()} API key in Settings first.`, 'error');
+    toggleSettings();
+    return;
+  }
+
+  const inquiries = raw.split(/\n\s*---\s*\n/).map(s => s.trim()).filter(Boolean);
+  if (!inquiries.length) { errEl.classList.remove('hidden'); return; }
+
+  // Show skeleton
+  const btn = document.getElementById('analyze-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg> Analyzing…';
+
+  document.getElementById('skeleton-rows').classList.remove('hidden');
+  document.getElementById('dashboard-section').classList.remove('hidden');
+  document.getElementById('leads-tbody').innerHTML = '';
+  document.getElementById('stats-cards').classList.remove('hidden');
+
+  try {
+    const res = await fetch(`${getBackendUrl()}/analyze`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': getApiKey(),
+        'X-AI-Provider': getAiProvider(),
+      },
+      body: JSON.stringify({ inquiries }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    allLeads = data.leads || [];
+    filteredLeads = [...allLeads];
+    sortDir = 'desc';
+    sortTable('priority_score', false);
+    renderStats();
+    showToast(`✅ ${allLeads.length} lead${allLeads.length !== 1 ? 's' : ''} analyzed!`, 'success');
+
+  } catch (e) {
+    showToast(`❌ Error: ${e.message}`, 'error');
+    document.getElementById('dashboard-section').classList.add('hidden');
+    document.getElementById('stats-cards').classList.add('hidden');
+  } finally {
+    document.getElementById('skeleton-rows').classList.add('hidden');
+    btn.disabled = false;
+    btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Analyze Leads';
+  }
+}
+
+// ─── RENDER TABLE ─────────────────────────────────────────
+function renderTable() {
+  const tbody = document.getElementById('leads-tbody');
+  const noRes = document.getElementById('no-results');
+
+  if (!filteredLeads.length) {
+    tbody.innerHTML = '';
+    noRes.classList.remove('hidden');
+    return;
+  }
+  noRes.classList.add('hidden');
+
+  tbody.innerHTML = filteredLeads.map((lead, idx) => {
+    const scoreColor = lead.priority_score >= 8 ? '#22c55e' : lead.priority_score >= 5 ? '#F59E0B' : '#ef4444';
+    const urgencyClass = { High: 'badge-high', Medium: 'badge-medium', Low: 'badge-low' }[lead.urgency] || 'badge-low';
+    const sentimentClass = {
+      Excited: 'badge-excited', Professional: 'badge-professional',
+      Frustrated: 'badge-frustrated', Neutral: 'badge-neutral'
+    }[lead.sentiment] || 'badge-neutral';
+    const sentimentEmoji = { Excited: '😊', Professional: '💼', Frustrated: '😤', Neutral: '😐' }[lead.sentiment] || '😐';
+    const snippet = (lead.raw_text || '').slice(0, 60).replace(/</g, '&lt;') + '…';
+
+    return `
+    <tr class="lead-row border-b border-white/[0.03] animate-fade-in" data-id="${lead.id}" style="animation-delay:${idx * 60}ms">
+      <td class="px-6 py-4">
+        <span class="text-2xl font-bold" style="color:${scoreColor}">${idx + 1}</span>
+      </td>
+      <td class="px-6 py-4 max-w-xs">
+        <p class="font-semibold text-white text-sm truncate">${escHtml(lead.name || 'Anonymous')}</p>
+        <p class="text-slate-500 text-xs mt-0.5 truncate" title="${escHtml(lead.raw_text)}">${snippet}</p>
+        <p class="text-slate-600 text-xs mt-0.5 italic">${escHtml(lead.summary || '')}</p>
+      </td>
+      <td class="px-6 py-4 text-amber-400 font-medium text-sm whitespace-nowrap">${escHtml(lead.budget || 'N/A')}</td>
+      <td class="px-6 py-4">
+        <span class="${urgencyClass} text-xs font-semibold px-2.5 py-1 rounded-full">${lead.urgency || '—'}</span>
+      </td>
+      <td class="px-6 py-4">
+        <span class="${sentimentClass} text-xs font-medium px-2.5 py-1 rounded-full">${sentimentEmoji} ${lead.sentiment || '—'}</span>
+      </td>
+      <td class="px-6 py-4">
+        <div class="flex items-center gap-3 min-w-[120px]">
+          <div class="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+            <div class="priority-bar-inner" style="width:${lead.priority_score * 10}%;background:${scoreColor}"></div>
+          </div>
+          <span class="font-bold text-sm" style="color:${scoreColor}">${lead.priority_score}</span>
+        </div>
+      </td>
+      <td class="px-6 py-4">
+        <div class="flex items-center gap-2">
+          <button onclick="openReplyModal(${lead.id})" title="Generate Reply"
+            class="text-xs font-semibold px-3 py-1.5 rounded-lg border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition flex items-center gap-1.5">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            Reply
+          </button>
+          <button onclick="openChatbot(${lead.id})" title="Open Chatbot"
+            class="text-xs font-semibold px-3 py-1.5 rounded-lg border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 transition flex items-center gap-1.5">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+            Chat
+          </button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── STATS ────────────────────────────────────────────────
+function renderStats() {
+  const high   = allLeads.filter(l => l.urgency === 'High').length;
+  const medium = allLeads.filter(l => l.urgency === 'Medium').length;
+  const low    = allLeads.filter(l => l.urgency === 'Low').length;
+  const avg    = allLeads.length ? (allLeads.reduce((s,l) => s + (l.priority_score || 0), 0) / allLeads.length).toFixed(1) : '—';
+
+  document.getElementById('stat-total').textContent = `${allLeads.length} Lead${allLeads.length !== 1 ? 's' : ''}`;
+  document.getElementById('stat-high').textContent   = `${high} High`;
+  document.getElementById('stat-medium').textContent = `${medium} Medium`;
+  document.getElementById('stat-low').textContent    = `${low} Low`;
+
+  document.getElementById('card-total').textContent  = allLeads.length;
+  document.getElementById('card-high').textContent   = high;
+  document.getElementById('card-medium').textContent = medium;
+  document.getElementById('card-avg').textContent    = avg;
+
+  document.getElementById('stats-bar').classList.remove('hidden');
+}
+
+// ─── SORT ─────────────────────────────────────────────────
+function sortTable(col, toggleDir = true) {
+  if (toggleDir) {
+    sortDir = (sortCol === col && sortDir === 'desc') ? 'asc' : 'desc';
+    sortCol = col;
+  }
+
+  filteredLeads.sort((a, b) => {
+    let av = a[col], bv = b[col];
+    if (col === 'urgency') {
+      const ord = { High: 3, Medium: 2, Low: 1 };
+      av = ord[av] || 0; bv = ord[bv] || 0;
+    } else if (typeof av === 'string') {
+      av = av.toLowerCase(); bv = (bv || '').toLowerCase();
+    }
+    return sortDir === 'asc' ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+  });
+
+  // Update header icons
+  document.querySelectorAll('th.sortable').forEach(th => {
+    th.classList.remove('active');
+    const icon = th.querySelector('.sort-icon');
+    icon.textContent = '↕';
+  });
+  document.querySelectorAll(`th[data-col="${col}"]`).forEach(th => {
+    th.classList.add('active');
+    th.querySelector('.sort-icon').textContent = sortDir === 'asc' ? '▲' : '▼';
+  });
+
+  renderTable();
+}
+
+// ─── EXPORT TO CSV ────────────────────────────────────────
+function exportToCSV() {
+  if (!filteredLeads || !filteredLeads.length) {
+    showToast('No leads to export!', 'error');
+    return;
+  }
+  
+  const headers = ['Rank', 'Name', 'Budget', 'Urgency', 'Sentiment', 'Priority Score', 'Summary', 'Original Text'];
+  
+  const rows = filteredLeads.map((lead, idx) => [
+    idx + 1,
+    lead.name || 'Anonymous',
+    lead.budget || 'N/A',
+    lead.urgency || '—',
+    lead.sentiment || '—',
+    lead.priority_score,
+    (lead.summary || '').replace(/"/g, '""'),
+    (lead.raw_text || '').replace(/"/g, '""')
+  ]);
+  
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(row => row.map(v => `"${v}"`).join(','))
+  ].join('\n');
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.setAttribute('href', url);
+  a.setAttribute('download', `leadiq-export-${new Date().toISOString().slice(0,10)}.csv`);
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  
+  showToast('✅ CSV exported successfully!', 'success');
+}
+
+// ─── FILTER ───────────────────────────────────────────────
+function filterLeads() {
+  const text   = document.getElementById('filter-input').value.toLowerCase();
+  const urgency= document.getElementById('urgency-filter').value;
+  filteredLeads = allLeads.filter(l => {
+    const matchText   = !text || JSON.stringify(l).toLowerCase().includes(text);
+    const matchUrgency= !urgency || l.urgency === urgency;
+    return matchText && matchUrgency;
+  });
+  // re-sort
+  sortTable(sortCol, false);
+}
+
+// ─── REPLY MODAL ──────────────────────────────────────────
+async function openReplyModal(leadId) {
+  const lead = allLeads.find(l => l.id === leadId);
+  if (!lead) return;
+
+  document.getElementById('reply-modal').classList.remove('hidden');
+  document.getElementById('reply-modal').classList.add('flex');
+  document.getElementById('reply-lead-name').textContent = lead.name || 'Anonymous';
+  document.getElementById('reply-loading').classList.remove('hidden');
+  document.getElementById('reply-content').classList.add('hidden');
+  document.getElementById('reply-content').textContent = '';
+
+  try {
+    const res = await fetch(`${getBackendUrl()}/generate-reply`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': getApiKey(),
+        'X-AI-Provider': getAiProvider(),
+      },
+      body: JSON.stringify({ lead }),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail);
+    const data = await res.json();
+    document.getElementById('reply-content').textContent = data.reply;
+    document.getElementById('reply-content').classList.remove('hidden');
+  } catch (e) {
+    document.getElementById('reply-content').textContent = `Error: ${e.message}`;
+    document.getElementById('reply-content').classList.remove('hidden');
+  } finally {
+    document.getElementById('reply-loading').classList.add('hidden');
+  }
+}
+
+function closeReplyModal(event) {
+  if (event && event.target !== document.getElementById('reply-modal')) return;
+  document.getElementById('reply-modal').classList.add('hidden');
+  document.getElementById('reply-modal').classList.remove('flex');
+}
+
+function copyReply() {
+  const text = document.getElementById('reply-content').textContent;
+  navigator.clipboard.writeText(text).then(() => showToast('📋 Copied to clipboard!', 'success'));
+}
+
+// ─── CHATBOT ──────────────────────────────────────────────
+function openChatbot(leadId) {
+  const lead = allLeads.find(l => l.id === leadId);
+  if (!lead) return;
+  currentChatLead = lead;
+
+  document.getElementById('chat-lead-name').textContent = lead.name || 'Anonymous';
+  document.getElementById('chat-warning').classList.toggle('hidden', lead.urgency !== 'High');
+
+  if (!chatHistory[leadId]) chatHistory[leadId] = [];
+
+  renderChatMessages();
+
+  // Show welcome if first time
+  if (!chatHistory[leadId].length) {
+    appendMessage('assistant', `Hi there! I'm Alex, your real estate assistant 🏡 I'm here to help answer any questions about ${lead.name !== 'Anonymous' ? lead.name + "'s" : 'this lead\'s'} inquiry. What would you like to explore?`);
+  }
+
+  document.getElementById('chatbot-panel').classList.remove('hidden-panel');
+  setTimeout(() => document.getElementById('chat-input').focus(), 350);
+}
+
+function closeChatbot() {
+  document.getElementById('chatbot-panel').classList.add('hidden-panel');
+}
+
+function appendMessage(role, content) {
+  if (!currentChatLead) return;
+  chatHistory[currentChatLead.id] = chatHistory[currentChatLead.id] || [];
+  chatHistory[currentChatLead.id].push({ role, content });
+  renderChatMessages();
+}
+
+function renderChatMessages() {
+  if (!currentChatLead) return;
+  const msgs = chatHistory[currentChatLead.id] || [];
+  const container = document.getElementById('chat-messages');
+
+  container.innerHTML = msgs.map(m => {
+    const isUser = m.role === 'user';
+    return `
+    <div class="flex ${isUser ? 'justify-end' : 'justify-start'} animate-fade-in">
+      <div class="${isUser
+        ? 'bg-amber-500/20 border border-amber-500/20 text-amber-100 ml-8'
+        : 'bg-white/5 border border-white/5 text-slate-200 mr-8'
+      } rounded-xl px-3 py-2 text-sm leading-relaxed max-w-full break-words">
+        ${escHtml(m.content)}
+      </div>
+    </div>`;
+  }).join('');
+
+  container.scrollTop = container.scrollHeight;
+}
+
+async function sendChat() {
+  if (!currentChatLead) return;
+  const input = document.getElementById('chat-input');
+  const message = input.value.trim();
+  if (!message) return;
+
+  input.value = '';
+  appendMessage('user', message);
+
+  document.getElementById('typing-indicator').classList.remove('hidden');
+
+  const leadCtx = `Lead: ${currentChatLead.name}, Budget: ${currentChatLead.budget}, Urgency: ${currentChatLead.urgency}, Sentiment: ${currentChatLead.sentiment}. Summary: ${currentChatLead.summary}`;
+
+  try {
+    const res = await fetch(`${getBackendUrl()}/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': getApiKey(),
+        'X-AI-Provider': getAiProvider(),
+      },
+      body: JSON.stringify({
+        lead_context: leadCtx,
+        messages: chatHistory[currentChatLead.id] || [],
+      }),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail);
+    const data = await res.json();
+    appendMessage('assistant', data.reply);
+  } catch (e) {
+    appendMessage('assistant', `Sorry, I ran into an error: ${e.message}`);
+  } finally {
+    document.getElementById('typing-indicator').classList.add('hidden');
+  }
+}
+
+// ─── TOAST ────────────────────────────────────────────────
+function showToast(message, type = 'info') {
+  const colors = {
+    success: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300',
+    error:   'bg-red-500/20 border-red-500/30 text-red-300',
+    info:    'bg-indigo-500/20 border-indigo-500/30 text-indigo-300',
+  };
+  const el = document.createElement('div');
+  el.className = `toast glass border ${colors[type] || colors.info} text-sm font-medium px-4 py-3 rounded-xl pointer-events-auto`;
+  el.textContent = message;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ─── UTILS ────────────────────────────────────────────────
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Close modal on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeReplyModal();
+    closeChatbot();
+    if (!document.getElementById('settings-panel').classList.contains('hidden')) toggleSettings();
+  }
+});
+</script>
+</body>
+</html>

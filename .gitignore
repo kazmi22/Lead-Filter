@@ -1,0 +1,14 @@
+# Python bytecode (compiled files)
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+venv/
+env/
+
+# Environment variables (Crucial if you have API keys!)
+.env
+
+# OS generated files
+.DS_Store
+Thumbs.db
